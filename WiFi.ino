@@ -5,6 +5,9 @@ ESP8266WiFiMulti wifiMulti;
 const char* STA_ssid     = "LAN_Prodmash";
 const char* STA_password = "admin@local";
 
+void WiFi_single();
+void WiFi_multi();
+
 // WIFI USER INIT
 void WiFi_user_init() {
 
@@ -39,6 +42,9 @@ void WiFi_single() {
 
 
 void WiFi_multi() {
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.softAP(AP_ssid, AP_password);
+  IPAddress AP_IP = WiFi.softAPIP();
   #ifdef DBG_OUTPUT_PORT
     DBG_OUTPUT_PORT.println("WiFI deinit to STA mode");
     DBG_OUTPUT_PORT.println("Connecting multi...");
@@ -59,7 +65,9 @@ void WiFi_user_loop() {
     #ifdef DBG_OUTPUT_PORT
       DBG_OUTPUT_PORT.println("WiFi not connected!");
     #endif
-      delay(1000);
+    delay(1000);
+    return;
   }
+  TCP_UART_handle();
 }
 

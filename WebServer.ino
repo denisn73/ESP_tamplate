@@ -1,4 +1,11 @@
 
+void handleFileList();
+void handleFileUpload();
+void handleFileDelete();
+void handleFileCreate();
+bool handleFileRead(String path);
+String getContentType(String filename);
+
 // holds the current upload
 File fsUploadFile;
 
@@ -109,7 +116,7 @@ void WebServer_init() {
 }
 
 // format bytes
-String formatBytes(size_t bytes){
+String formatBytes(size_t bytes) {
   if (bytes < 1024){
     return String(bytes)+"B";
   } else if(bytes < (1024 * 1024)){
@@ -121,7 +128,7 @@ String formatBytes(size_t bytes){
   }
 }
 
-String getContentType(String filename){
+String getContentType(String filename) {
   if(server.hasArg("download")) return "application/octet-stream";
   else if(filename.endsWith(".htm")) return "text/html";
   else if(filename.endsWith(".html")) return "text/html";
@@ -156,7 +163,7 @@ bool handleFileRead(String path) {
   return false;
 }
 
-void handleFileUpload(){
+void handleFileUpload() {
   if(server.uri() != "/edit") return;
   HTTPUpload& upload = server.upload();
   if(upload.status == UPLOAD_FILE_START){
@@ -179,7 +186,7 @@ void handleFileUpload(){
   }
 }
 
-void handleFileDelete(){
+void handleFileDelete() {
   if(server.args() == 0) return server.send(500, "text/plain", "BAD ARGS");
   String path = server.arg(0);
   #ifdef DBG_OUTPUT_PORT
@@ -194,7 +201,7 @@ void handleFileDelete(){
   path = String();
 }
 
-void handleFileCreate(){
+void handleFileCreate() {
   if(server.args() == 0)
     return server.send(500, "text/plain", "BAD ARGS");
   String path = server.arg(0);

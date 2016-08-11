@@ -16,6 +16,7 @@
 #ifdef USE_SOFTSERIAL
 #include <SoftwareSerial.h>
 SoftwareSerial SoftSerial(5, 4, 128); // RX, TX, inverse_logic, buffSize
+#define SOFT_SERIAL_BAUD 9600
 #endif
 
 #define DBG_OUTPUT_PORT Serial
@@ -37,6 +38,16 @@ String      ESP_version  = "v1.0";
 
 ESP8266WebServer server(80);
 
+void SPIFFS_init();
+void WebServer_init();
+void user_setup();
+void user_loop();
+void FIRMWARE_BACKUP();
+void WiFi_user_init();
+void TCP_UART_init();
+void WiFi_user_loop();
+String formatBytes(size_t);
+
 void setup(void) {
 
   #ifdef DBG_OUTPUT_PORT    
@@ -52,7 +63,7 @@ void setup(void) {
     #ifdef DBG_OUTPUT_PORT
       if(DBG_OUTPUT_PORT != SoftSerial) SoftSerial.begin(DBG_PORT_BAUD);
     #else
-      SoftSerial.begin(DBG_PORT_BAUD);
+      SoftSerial.begin(SOFT_SERIAL_BAUD);
     #endif
   #endif
   //  *** WARNING ***  //

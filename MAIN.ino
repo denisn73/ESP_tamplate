@@ -4,6 +4,7 @@
 void user_setup() {
   
   WiFi_user_init();
+  TCP_UART_init();
   
 }
 
