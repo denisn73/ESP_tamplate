@@ -23,6 +23,9 @@ void WebServer_init() {
     DBG_OUTPUT_PORT.println(".local/update to upload new firmware");
   #endif
 
+  server.on("/auth", HTTP_GET, []() {
+    if(!handleFileRead("/auth.htm")) server.send(404, "text/plain", "FileNotFound");
+  });
   server.on("/info", HTTP_GET, []() {
     if(!handleFileRead("/info.htm")) server.send(404, "text/plain", "FileNotFound");
   });
@@ -115,6 +118,35 @@ void WebServer_init() {
   
 }
 
+//========================== ПРОВЕРКА АВТОРИЗАЦИИ ==========================//
+bool is_authentified() {
+  #ifdef DBG_OUTPUT_PORT
+  DBG_OUTPUT_PORT.println("Enter is_authentified");
+  #endif
+  if(server.hasHeader("Cookie")) {
+    String cookie = server.header("Cookie");
+    #ifdef DBG_OUTPUT_PORT
+      DBG_OUTPUT_PORT.print("Found cookie: ");
+      DBG_OUTPUT_PORT.println(cookie);
+    #endif
+    if(cookie.indexOf("ESPSESSIONID=1") != -1) {
+      //admin_flag = 1;
+      #ifdef DBG_OUTPUT_PORT
+        DBG_OUTPUT_PORT.println("Authentificated as 'Admin'");
+      #endif
+      return true;
+    } else if(cookie.indexOf("ESPSESSIONID=2") != -1) {
+      //admin_flag = 0;
+      DBG_OUTPUT_PORT.println("Authentificated as 'User'");
+      return true;
+    }
+  }
+  #ifdef DBG_OUTPUT_PORT
+    DBG_OUTPUT_PORT.println("Authentification Failed");
+  #endif
+  return false;
+}
+
 // format bytes
 String formatBytes(size_t bytes) {
   if (bytes < 1024){
@@ -152,7 +184,7 @@ bool handleFileRead(String path) {
   if(path.endsWith("/")) path += "index.htm";
   String contentType = getContentType(path);
   String pathWithGz = path + ".gz";
-  if(SPIFFS.exists(pathWithGz) || SPIFFS.exists(path)){
+  if(SPIFFS.exists(pathWithGz) || SPIFFS.exists(path)) {
     if(SPIFFS.exists(pathWithGz))
       path += ".gz";
     File file = SPIFFS.open(path, "r");
