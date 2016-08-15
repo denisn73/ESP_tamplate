@@ -68,6 +68,6 @@ void WiFi_user_loop() {
     delay(1000);
     return;
   }
-  TCP_UART_handle();
+  //TCP_UART_handle();
 }
 

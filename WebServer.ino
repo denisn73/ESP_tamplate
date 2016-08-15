@@ -23,6 +23,9 @@ void WebServer_init() {
     DBG_OUTPUT_PORT.println(".local/update to upload new firmware");
   #endif
 
+  server.on("/auth", HTTP_GET, []() {
+    if(!handleFileRead("/web/auth.htm")) server.send(404, "text/plain", "FileNotFound");
+  });
   server.on("/info", HTTP_GET, []() {
     if(!handleFileRead("/info.htm")) server.send(404, "text/plain", "FileNotFound");
   });

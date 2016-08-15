@@ -12,17 +12,18 @@
 #include <ESP8266mDNS.h>
 #include <FS.h>
 
-#define USE_SOFTSERIAL
+//#define USE_SOFTSERIAL
 #ifdef USE_SOFTSERIAL
 #include <SoftwareSerial.h>
-SoftwareSerial SoftSerial(5, 4, 128); // RX, TX, inverse_logic, buffSize
-#define SOFT_SERIAL_BAUD 9600
+SoftwareSerial SoftSerialRX(5, -1, true,  128); // RX, TX, inverse_logic, buffSize
+SoftwareSerial SoftSerialTX(-1, 4, true, 128); // RX, TX, inverse_logic, buffSize
+#define SOFT_SERIAL_BAUD 38400
 #endif
 
 #define DBG_OUTPUT_PORT Serial
 //#define DBG_OUTPUT_PORT SoftSerial
 #ifdef DBG_OUTPUT_PORT
-  #define DBG_PORT_BAUD 115200
+  #define DBG_PORT_BAUD 38400
 #endif
 
 #define USE_RESET_PIN   12
@@ -60,11 +61,17 @@ void setup(void) {
     //DBG_OUTPUT_PORT.setDebugOutput(false);
   #endif
   #ifdef USE_SOFTSERIAL
-    #ifdef DBG_OUTPUT_PORT
-      if(DBG_OUTPUT_PORT != SoftSerial) SoftSerial.begin(DBG_PORT_BAUD);
-    #else
-      SoftSerial.begin(SOFT_SERIAL_BAUD);
-    #endif
+    SoftSerialRX.begin(SOFT_SERIAL_BAUD);
+    SoftSerialTX.begin(SOFT_SERIAL_BAUD);
+//    #ifdef DBG_OUTPUT_PORT
+//      if(DBG_OUTPUT_PORT == Serial) {
+//        SoftSerialRX.begin(DBG_PORT_BAUD);
+//        SoftSerialTX.begin(DBG_PORT_BAUD);
+//      }
+//    #else
+//      SoftSerialRX.begin(SOFT_SERIAL_BAUD);
+//      SoftSerialTX.begin(SOFT_SERIAL_BAUD);
+//    #endif
   #endif
   //  *** WARNING ***  //
   // BE VERY CAREFULL! //
