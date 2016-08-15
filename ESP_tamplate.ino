@@ -12,14 +12,14 @@
 #include <ESP8266mDNS.h>
 #include <FS.h>
 
-#define USE_SOFTSERIAL
+//#define USE_SOFTSERIAL
 #ifdef USE_SOFTSERIAL
 #include <SoftwareSerial.h>
 SoftwareSerial SoftSerial(5, 4, 128); // RX, TX, inverse_logic, buffSize
 #define SOFT_SERIAL_BAUD 9600
 #endif
 
-#define DBG_OUTPUT_PORT Serial
+//#define DBG_OUTPUT_PORT Serial
 //#define DBG_OUTPUT_PORT SoftSerial
 #ifdef DBG_OUTPUT_PORT
   #define DBG_PORT_BAUD 115200
