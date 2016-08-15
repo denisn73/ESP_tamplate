@@ -10,37 +10,43 @@
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
+#include <ESP8266WiFiMulti.h>
 #include <FS.h>
 
 //#define USE_SOFTSERIAL
 #ifdef USE_SOFTSERIAL
 #include <SoftwareSerial.h>
-SoftwareSerial SoftSerialRX(5, -1, true,  128); // RX, TX, inverse_logic, buffSize
-SoftwareSerial SoftSerialTX(-1, 4, true, 128); // RX, TX, inverse_logic, buffSize
-#define SOFT_SERIAL_BAUD 38400
+SoftwareSerial SoftSerial(5, -1, true,  128); // RX, TX, inverse_logic, buffSize ("-1" if pin not used)
+#define SOFT_SERIAL_BAUD 115200
 #endif
 
 #define DBG_OUTPUT_PORT Serial
 //#define DBG_OUTPUT_PORT SoftSerial
 #ifdef DBG_OUTPUT_PORT
-  #define DBG_PORT_BAUD 38400
+  #define DBG_PORT_BAUD 115200
 #endif
 
-#define USE_RESET_PIN   12
-#ifdef USE_RESET_PIN
+//#define USE_RECOVER_PIN   12
+#ifdef USE_RECOVER_PIN
   #define RECOVER_BTN_TIME 5000 // 1000 - 10000
 #endif
 
 const char* AP_ssid      = "BeerBoxESP";
 const char* AP_password  = "1234567890";
+const char* STA_ssid     = "LAN_Prodmash";
+const char* STA_password = "admin@local";
 const char* host         = "esp8266fs";
 String      ESP_name     = "ESP_tamplate";
 String      ESP_version  = "v1.0";
 
+ESP8266WiFiMulti wifiMulti;
 ESP8266WebServer server(80);
 
 void SPIFFS_init();
+void serialEvent();
 void WebServer_init();
+void WiFi_init(void);
+void WiFi_scan(void);
 void user_setup();
 void user_loop();
 void FIRMWARE_BACKUP();
@@ -48,6 +54,8 @@ void WiFi_user_init();
 void TCP_UART_init();
 void WiFi_user_loop();
 String formatBytes(size_t);
+
+boolean wifi_connected_flag = false;
 
 void setup(void) {
 
@@ -77,35 +85,99 @@ void setup(void) {
   // BE VERY CAREFULL! //
   SPIFFS_init();
   WebServer_init();
-  //WiFi_init();
+  WiFi_init();
   user_setup();
   //*******************//
 
 }
  
-void loop(void){
+void loop(void) {
   
   server.handleClient();
+  if(wifiMulti.run() == WL_CONNECTED) {
+    if(!wifi_connected_flag) {
+      wifi_connected_flag = true;
+      #ifdef DBG_OUTPUT_PORT
+        DBG_OUTPUT_PORT.print("WiFi connected to: ");
+        DBG_OUTPUT_PORT.println(WiFi.SSID());
+        DBG_OUTPUT_PORT.print("IP-address: ");
+        DBG_OUTPUT_PORT.println(WiFi.localIP());
+      #endif
+    }    
+  } else {
+    if(wifi_connected_flag) {
+      wifi_connected_flag = false;
+      #ifdef DBG_OUTPUT_PORT
+        DBG_OUTPUT_PORT.println("WiFi disconnected!");
+      #endif
+    }
+  }
   user_loop();
+  #ifdef DBG_OUTPUT_PORT
+    serialEvent();
+  #endif
   
 }
 
-void WiFi_init() {
-  #ifdef DBG_OUTPUT_PORT
-    DBG_OUTPUT_PORT.print("Configuring as AP... ");
-  #endif
-  WiFi.mode(WIFI_AP);
+void WiFi_init(void) {
+  WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(AP_ssid, AP_password);
   IPAddress AP_IP = WiFi.softAPIP();
   #ifdef DBG_OUTPUT_PORT
-    DBG_OUTPUT_PORT.println("OK!");
-    DBG_OUTPUT_PORT.print("SSID: ");
+    DBG_OUTPUT_PORT.println("WiFi init as AP_STA mode!");
+    DBG_OUTPUT_PORT.print("AP_SSID: ");
     DBG_OUTPUT_PORT.println(AP_ssid);
-    DBG_OUTPUT_PORT.print("PASSWORD: ");
+    DBG_OUTPUT_PORT.print("AP_PASS: ");
     DBG_OUTPUT_PORT.println(AP_password);
-    DBG_OUTPUT_PORT.print("IP-address: ");
+    DBG_OUTPUT_PORT.print("AP_IP-address: ");
     DBG_OUTPUT_PORT.println(AP_IP);
+    DBG_OUTPUT_PORT.println("Connecting multi...");
   #endif
+  wifiMulti.addAP("LAN_Prodmash", "admin@local");
+  wifiMulti.addAP("TP-LINK_C3F368", "ltybcrfn73");
+  wifiMulti.run();
+}
+
+void WiFi_scan(void) {
+  #ifdef DBG_OUTPUT_PORT
+    DBG_OUTPUT_PORT.print("Scan networks... ");
+  #endif
+  int n = WiFi.scanNetworks();
+  #ifdef DBG_OUTPUT_PORT
+    DBG_OUTPUT_PORT.println("Done!");
+  #endif
+  if(n == 0) {
+    #ifdef DBG_OUTPUT_PORT
+      DBG_OUTPUT_PORT.println(" no networks found");
+    #endif
+  } else {
+    #ifdef DBG_OUTPUT_PORT
+      DBG_OUTPUT_PORT.print(n);
+      DBG_OUTPUT_PORT.println(" networks found:");
+    #endif
+    String networks = "{";
+    for(int i = 0; i < n; ++i) {
+      networks += "{'SSID':'";
+      networks += WiFi.SSID(i);
+      networks += "','SECURE':";
+      if(WiFi.encryptionType(i)==ENC_TYPE_NONE) networks += "false";
+      else networks += "true";
+      networks += "}\n";
+      #ifdef DBG_OUTPUT_PORT
+        DBG_OUTPUT_PORT.print(i + 1);
+        DBG_OUTPUT_PORT.print(": ");
+        DBG_OUTPUT_PORT.print(WiFi.SSID(i));
+        DBG_OUTPUT_PORT.print(" (");
+        DBG_OUTPUT_PORT.print(WiFi.RSSI(i));
+        DBG_OUTPUT_PORT.print(")");
+        DBG_OUTPUT_PORT.println((WiFi.encryptionType(i) == ENC_TYPE_NONE)?" ":"*");
+      #endif
+    }
+    networks += "}";
+    #ifdef DBG_OUTPUT_PORT
+      DBG_OUTPUT_PORT.println(networks);
+    #endif
+  }
 }
 
 // SPIFFS INIT
@@ -122,11 +194,11 @@ void SPIFFS_init() {
   #ifdef DBG_OUTPUT_PORT
     DBG_OUTPUT_PORT.printf("\n");
   #endif
-  #ifdef USE_RESET_PIN
+  #ifdef USE_RECOVER_PIN
     unsigned int recover_button_counter = RECOVER_BTN_TIME;
-    pinMode(USE_RESET_PIN, INPUT);
-    digitalWrite(USE_RESET_PIN, HIGH);
-    while(!digitalRead(USE_RESET_PIN)) recover_button_counter--;
+    pinMode(USE_RECOVER_PIN, INPUT);
+    digitalWrite(USE_RECOVER_PIN, HIGH);
+    while(!digitalRead(USE_RECOVER_PIN)) recover_button_counter--;
     if(!recover_button_counter) {
       #ifdef DBG_OUTPUT_PORT
         DBG_OUTPUT_PORT.println("Recover - Init proccess!");
@@ -200,3 +272,21 @@ void FIRMWARE_BACKUP() {
     //DBG_OUTPUT_PORT.setDebugOutput(false);
   #endif
 }
+
+#ifdef DBG_OUTPUT_PORT
+String inputString = "";
+void serialEvent() {
+  while(DBG_OUTPUT_PORT.available()) {
+    char inChar = (char)DBG_OUTPUT_PORT.read();
+    if(inChar != '\n') {
+      if(inChar != '\r') {
+        inputString += inChar;
+      }
+    } else {
+      if(inputString=="SCAN") WiFi_scan();
+      inputString = "";
+    }
+  }
+}
+#endif
+
