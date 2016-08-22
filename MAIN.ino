@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include <Ticker.h>
 #include <Wire.h>
 
@@ -41,26 +40,17 @@ void tick() {
     }
   }
 }
-=======
->>>>>>> origin/master
 
 void user_setup() {
     //Wire.begin();
-    TCP_UART_init();
+    //TCP_UART_init();
     //ticker.attach(5, tick);
 }
 
 void user_loop() {
-<<<<<<< HEAD
-    TCP_UART_handle();
-=======
-<<<<<<< HEAD
+  //TCP_UART_handle();
   
-  WiFi_user_loop();  
+  //WiFi_user_loop();  
     
-=======
-      
->>>>>>> origin/master
->>>>>>> origin/master
 }
 
