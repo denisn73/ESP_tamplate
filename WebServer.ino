@@ -210,7 +210,9 @@ bool is_authentified() {
       return true;
     } else if(cookie.indexOf("ESPSESSIONID=2") != -1) {
       //admin_flag = 0;
-      DBG_OUTPUT_PORT.println("Authentificated as 'User'");
+      #ifdef DBG_OUTPUT_PORT
+        DBG_OUTPUT_PORT.println("Authentificated as 'User'");
+      #endif
       return true;
     }
   }
