@@ -12,6 +12,8 @@
 #include <ESP8266mDNS.h>
 #include <ESP8266WiFiMulti.h>
 #include <FS.h>
+#include <vector>
+#include <algorithm>
 
 //#define USE_SOFTSERIAL
 #ifdef USE_SOFTSERIAL
@@ -54,8 +56,20 @@ void WiFi_user_init();
 void TCP_UART_init();
 void WiFi_user_loop();
 String formatBytes(size_t);
+void read_AP(String path);
 
 boolean wifi_connected_flag = false;
+
+struct WiFiItem {
+  String ssid;
+  String pass;
+  int    rssi = 0;
+  bool   saved = false;
+  bool   secure = false;
+  bool   connected = false;
+};
+
+std::vector<WiFiItem> wifis;
 
 void setup(void) {
 
@@ -120,6 +134,8 @@ void loop(void) {
 }
 
 void WiFi_init(void) {
+  read_AP("/wifi_config.txt");
+  WiFi_scan();
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(AP_ssid, AP_password);
   IPAddress AP_IP = WiFi.softAPIP();
@@ -133,12 +149,18 @@ void WiFi_init(void) {
     DBG_OUTPUT_PORT.println(AP_IP);
     DBG_OUTPUT_PORT.println("Connecting multi...");
   #endif
-  wifiMulti.addAP("LAN_Prodmash", "admin@local");
-  wifiMulti.addAP("TP-LINK_C3F368", "ltybcrfn73");
+  for(int i=0; i<wifis.size(); i++) {
+    if(wifis[i].saved) wifiMulti.addAP(wifis[i].ssid.c_str(), wifis[i].pass.c_str());
+  }
   wifiMulti.run();
 }
 
 void WiFi_scan(void) {
+  wifis.erase( std::remove_if(wifis.begin(), wifis.end(), [](WiFiItem& item) -> bool {
+    if (item.saved) item.rssi = 0;
+    return !item.saved;
+  }), wifis.end() );
+  
   #ifdef DBG_OUTPUT_PORT
     DBG_OUTPUT_PORT.print("Scan networks... ");
   #endif
@@ -155,27 +177,55 @@ void WiFi_scan(void) {
       DBG_OUTPUT_PORT.print(n);
       DBG_OUTPUT_PORT.println(" networks found:");
     #endif
-    String networks = "{";
+
+//    char buff[512], tmp_buff[128];
+//    const char format[] = "{\"ssid\":\"%s\",\"secure\":%d,\"flag\":%d,}";    
+//    int flag;      
+//    String networks = "[";
+//      flag = 0;
+//      if(WiFi.SSID(i).equals(WiFi.SSID())) flag = 2;
+//      sprintf(tmp_buff, format, WiFi.SSID(i).c_str(), WiFi.encryptionType(i), flag);
+//      strcat(buff, tmp_buff);
+//      networks += "{'\"SSID':\"";
+//      networks += WiFi.SSID(i);
+//      networks += "','SECURE':";
+//      if(WiFi.encryptionType(i)==ENC_TYPE_NONE) networks += "false";
+//      else networks += "true";
+//      networks += "},";
+
+    // пробегаем по каждой найденной сети
     for(int i = 0; i < n; ++i) {
-      networks += "{'SSID':'";
-      networks += WiFi.SSID(i);
-      networks += "','SECURE':";
-      if(WiFi.encryptionType(i)==ENC_TYPE_NONE) networks += "false";
-      else networks += "true";
-      networks += "}\n";
-      #ifdef DBG_OUTPUT_PORT
-        DBG_OUTPUT_PORT.print(i + 1);
-        DBG_OUTPUT_PORT.print(": ");
-        DBG_OUTPUT_PORT.print(WiFi.SSID(i));
-        DBG_OUTPUT_PORT.print(" (");
-        DBG_OUTPUT_PORT.print(WiFi.RSSI(i));
-        DBG_OUTPUT_PORT.print(")");
-        DBG_OUTPUT_PORT.println((WiFi.encryptionType(i) == ENC_TYPE_NONE)?" ":"*");
-      #endif
+      // получаем SSID
+      String ssid = WiFi.SSID(i);
+      // проверяем наличие сети в списке
+      auto it = std::find_if(wifis.begin(), wifis.end(), [&ssid](const WiFiItem& item) -> bool {
+        return item.ssid.equals(ssid);
+      });
+      // если сети нет в списке - добавляем
+      if(it == wifis.end()) {
+        WiFiItem item;
+        item.saved  = false;
+        item.ssid   = ssid;
+        item.secure = WiFi.encryptionType(i) != ENC_TYPE_NONE;
+        item.rssi   = WiFi.RSSI(i);
+        wifis.push_back(item);
+      }
+      // иначе если SSID совпадает то меняем уровень сигнала
+      else if (it->rssi > WiFi.RSSI(i)) {
+        it->rssi = WiFi.RSSI(i);
+      }
     }
-    networks += "}";
     #ifdef DBG_OUTPUT_PORT
-      DBG_OUTPUT_PORT.println(networks);
+      for(int i=0; i<wifis.size(); i++) {
+        if(wifis[i].rssi) {
+          DBG_OUTPUT_PORT.print(i);
+          DBG_OUTPUT_PORT.print(". SSID: ");
+          DBG_OUTPUT_PORT.print(wifis[i].ssid);
+          DBG_OUTPUT_PORT.print(", RSSI: ");
+          DBG_OUTPUT_PORT.print(wifis[i].rssi);
+          DBG_OUTPUT_PORT.println(wifis[i].secure?"*":"");
+        }
+      }      
     #endif
   }
 }
@@ -284,8 +334,9 @@ void serialEvent() {
       }
     } else {
       if(inputString=="SCAN") WiFi_scan();
+      else if(inputString=="READ_AP") read_AP("/wifi_config.txt");
       inputString = "";
-    }
+    }    
   }
 }
 #endif

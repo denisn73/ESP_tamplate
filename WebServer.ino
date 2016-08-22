@@ -22,7 +22,80 @@ void WebServer_init() {
     DBG_OUTPUT_PORT.print(host);
     DBG_OUTPUT_PORT.println(".local/update to upload new firmware");
   #endif
-
+  
+  server.on("/wifi_scan.htm", HTTP_GET, []() {
+    if(!handleFileRead("/wifi_scan.htm")) server.send(404, "text/plain", "FileNotFound");
+  });
+  server.on("/wifi_scan", HTTP_GET, []() {
+    String data = "[";
+    for(int i=0; i<wifis.size(); i++) {
+      data += "{\"ssid\":\"";
+      data += wifis[i].ssid;
+      data += "\", \"rssi\":";
+      data += wifis[i].rssi;
+      data += ", \"secure\":";
+      data += wifis[i].secure;
+      data += ", \"flag\":";
+      byte flag = 0;
+      if(wifis[i].ssid.equals(WiFi.SSID())) flag = 2;
+      else if(wifis[i].saved) flag = 1;
+      data += flag;
+      data += "}";
+      if(i<wifis.size()-1) data += ",";
+    }
+    data += "]";
+    server.send(200, "application/json", data);
+    //
+  });
+  server.on("/wifi_connect", HTTP_POST, []() {
+    server.sendHeader("Location", "/wifi_scan.htm");
+    server.send(301);          
+    if(server.hasArg("ssid")) {
+      String ssid = server.arg("ssid");
+      String pass = "";
+      if(server.hasArg("password")) pass = server.arg("password");
+      if(server.hasArg("save")) {
+        if(server.arg("save")=="on") {
+          #ifdef DBG_OUTPUT_PORT
+            DBG_OUTPUT_PORT.print("Add ");
+            DBG_OUTPUT_PORT.print(ssid);
+            DBG_OUTPUT_PORT.print(" to saved networks file");
+          #endif
+          File file = SPIFFS.open("/wifi_config.txt", "a");
+          file.print(ssid + ",");
+          file.print(pass + "\n");
+          file.close();
+        }
+      }
+      #ifdef DBG_OUTPUT_PORT
+        DBG_OUTPUT_PORT.print("");
+      #endif
+      if(ssid != WiFi.SSID()) {
+        #ifdef DBG_OUTPUT_PORT
+          DBG_OUTPUT_PORT.print("Disconnect from ");
+          DBG_OUTPUT_PORT.println(WiFi.SSID());
+        #endif
+        WiFi.disconnect();
+        #ifdef DBG_OUTPUT_PORT
+          DBG_OUTPUT_PORT.print("Try connect to \"");
+          DBG_OUTPUT_PORT.print(ssid);
+          DBG_OUTPUT_PORT.print("\" with pass \"");
+          DBG_OUTPUT_PORT.print(pass);
+          DBG_OUTPUT_PORT.println("\"");
+        #endif
+      } else {
+        #ifdef DBG_OUTPUT_PORT
+          DBG_OUTPUT_PORT.print(WiFi.SSID());
+          DBG_OUTPUT_PORT.println(" already used.");
+        #endif        
+      }
+      //wifiMulti.addAP(ssid.c_str(), pass.c_str());
+      if(pass.length()>0) WiFi.begin(ssid.c_str(), pass.c_str());
+      else WiFi.begin(ssid.c_str());
+    }
+    yield();
+  });
+  
   server.on("/auth", HTTP_GET, []() {
     if(!handleFileRead("/auth.htm")) server.send(404, "text/plain", "FileNotFound");
   });
@@ -177,6 +250,9 @@ String getContentType(String filename) {
   return "text/plain";
 }
 
+
+
+
 bool handleFileRead(String path) {
   #ifdef DBG_OUTPUT_PORT
     DBG_OUTPUT_PORT.println("handleFileRead: " + path);
@@ -188,6 +264,14 @@ bool handleFileRead(String path) {
     if(SPIFFS.exists(pathWithGz))
       path += ".gz";
     File file = SPIFFS.open(path, "r");
+//    String t = file.read(); 
+//    t.indexOf(',');
+//    //...
+//    WiFiItem item;
+//    item.ssid = t.substring(...);
+//    item.pwd = ./.;
+//    wifis.push_back(item);
+//    for (int i = 0; i < wifis.size();i++)
     size_t sent = server.streamFile(file, contentType);
     file.close();
     return true;

@@ -4,10 +4,15 @@
 //#define TCP_UART_SERIAL_RX SoftSerialRX
 //#define TCP_UART_SERIAL_TX SoftSerialTX
 
+#include <SoftwareSerial.h>
+SoftwareSerial SoftSerial(12, 13, false,  128);
+#define SOFT_SERIAL_BAUD 115200
+
 WiFiServer tcp_uart_server(TCP_UART_PORT);
 WiFiClient serverClients[MAX_SRV_CLIENTS];
 
 void TCP_UART_init() {
+  SoftSerial.begin(SOFT_SERIAL_BAUD);
   tcp_uart_server.begin();
   tcp_uart_server.setNoDelay(true);
   #ifdef DBG_OUTPUT_PORT
@@ -40,21 +45,43 @@ void TCP_UART_handle() {
     if (serverClients[i] && serverClients[i].connected()) {
       if(serverClients[i].available()){
         //get data from the telnet client and push it to the UART
-        //while(serverClients[i].available()) TCP_UART_SERIAL_TX.write(serverClients[i].read());
+        #ifdef DBG_OUTPUT_PORT
+          DBG_OUTPUT_PORT.print("TCP: ");
+        #endif
+        while(serverClients[i].available()) {
+          byte b = serverClients[i].read();
+          SoftSerial.write(b);
+          #ifdef DBG_OUTPUT_PORT
+            DBG_OUTPUT_PORT.write(b);
+          #endif
+        }
+        #ifdef DBG_OUTPUT_PORT
+          DBG_OUTPUT_PORT.println();
+        #endif
       }
     }
   }
   //check UART for data
-//  if(TCP_UART_SERIAL_RX.available()) {
-//    size_t len = TCP_UART_SERIAL_RX.available();
-//    uint8_t sbuf[len];
-//    TCP_UART_SERIAL_RX.readBytes(sbuf, len);
-//    //push UART data to all connected telnet clients
-//    for(i = 0; i < MAX_SRV_CLIENTS; i++) {
-//      if (serverClients[i] && serverClients[i].connected()){
-//        serverClients[i].write(sbuf, len);
-//      }
-//    }
-//  }
+  if(DBG_OUTPUT_PORT.available()) {
+    #ifdef DBG_OUTPUT_PORT
+      DBG_OUTPUT_PORT.print("SERIAL: ");
+    #endif
+    size_t len = DBG_OUTPUT_PORT.available();
+    uint8_t sbuf[len];
+    DBG_OUTPUT_PORT.readBytes(sbuf, len);
+    //push UART data to all connected telnet clients
+    for(i = 0; i < MAX_SRV_CLIENTS; i++) {
+      if (serverClients[i] && serverClients[i].connected()){
+        serverClients[i].write(sbuf, len);
+        #ifdef DBG_OUTPUT_PORT
+          DBG_OUTPUT_PORT.write(sbuf, len);
+        #endif
+      }
+      //delay(1);
+    }
+    #ifdef DBG_OUTPUT_PORT
+      DBG_OUTPUT_PORT.println();
+    #endif
+  }
 }
 
