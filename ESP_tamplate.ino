@@ -22,7 +22,7 @@ SoftwareSerial SoftSerial(5, -1, true,  128); // RX, TX, inverse_logic, buffSize
 #define SOFT_SERIAL_BAUD 115200
 #endif
 
-#define DBG_OUTPUT_PORT Serial
+//#define DBG_OUTPUT_PORT Serial
 //#define DBG_OUTPUT_PORT SoftSerial
 #ifdef DBG_OUTPUT_PORT
   #define DBG_PORT_BAUD 115200

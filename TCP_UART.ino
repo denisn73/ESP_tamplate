@@ -1,8 +1,14 @@
 
 #define MAX_SRV_CLIENTS 1
 #define TCP_UART_PORT   4444
+<<<<<<< HEAD
+#define TCP_UART_SERIAL Serial
+#include <SoftwareSerial.h>
+SoftwareSerial SoftSerial(-1, 4, 128);
+=======
 //#define TCP_UART_SERIAL_RX SoftSerialRX
 //#define TCP_UART_SERIAL_TX SoftSerialTX
+>>>>>>> origin/master
 
 #include <SoftwareSerial.h>
 SoftwareSerial SoftSerial(12, 13, false,  128);
@@ -12,7 +18,12 @@ WiFiServer tcp_uart_server(TCP_UART_PORT);
 WiFiClient serverClients[MAX_SRV_CLIENTS];
 
 void TCP_UART_init() {
+<<<<<<< HEAD
   SoftSerial.begin(SOFT_SERIAL_BAUD);
+=======
+  TCP_UART_SERIAL.begin(9600);
+  SoftSerial.begin(9600);
+>>>>>>> origin/master
   tcp_uart_server.begin();
   tcp_uart_server.setNoDelay(true);
   #ifdef DBG_OUTPUT_PORT
@@ -45,6 +56,7 @@ void TCP_UART_handle() {
     if (serverClients[i] && serverClients[i].connected()) {
       if(serverClients[i].available()){
         //get data from the telnet client and push it to the UART
+<<<<<<< HEAD
         #ifdef DBG_OUTPUT_PORT
           DBG_OUTPUT_PORT.print("TCP: ");
         #endif
@@ -58,6 +70,13 @@ void TCP_UART_handle() {
         #ifdef DBG_OUTPUT_PORT
           DBG_OUTPUT_PORT.println();
         #endif
+=======
+<<<<<<< HEAD
+        while(serverClients[i].available()) SoftSerial.write(serverClients[i].read());
+=======
+        //while(serverClients[i].available()) TCP_UART_SERIAL_TX.write(serverClients[i].read());
+>>>>>>> origin/master
+>>>>>>> origin/master
       }
     }
   }
