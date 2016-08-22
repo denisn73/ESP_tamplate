@@ -27,24 +27,43 @@ void WebServer_init() {
     if(!handleFileRead("/wifi_scan.htm")) server.send(404, "text/plain", "FileNotFound");
   });
   server.on("/wifi_scan", HTTP_GET, []() {
+    
+  DynamicJsonBuffer jsonArrayBuffer;
+  JsonArray& json = jsonArrayBuffer.createArray();
+  
     String data = "[";
     for(int i=0; i<wifis.size(); i++) {
-      data += "{\"ssid\":\"";
-      data += wifis[i].ssid;
-      data += "\", \"rssi\":";
-      data += wifis[i].rssi;
-      data += ", \"secure\":";
-      data += wifis[i].secure;
-      data += ", \"flag\":";
-      byte flag = 0;
-      if(wifis[i].ssid.equals(WiFi.SSID())) flag = 2;
-      else if(wifis[i].saved) flag = 1;
-      data += flag;
-      data += "}";
-      if(i<wifis.size()-1) data += ",";
+
+    byte flag = 0;
+    if(wifis[i].ssid.equals(WiFi.SSID())) flag = 2;
+    else if(wifis[i].saved) flag = 1;
+    
+    JsonObject &obj = json.createNestedObject();
+    obj["ssid"] = wifis[i].ssid;
+    obj["rssi"] = wifis[i].rssi;
+    obj["secure"] = wifis[i].secure;
+    obj["flag"] = flag;
+    
+//      data += "{\"ssid\":\"";
+//      data += wifis[i].ssid;
+//      data += "\", \"rssi\":";
+//      data += wifis[i].rssi;
+//      data += ", \"secure\":";
+//      data += wifis[i].secure;
+//      data += ", \"flag\":";
+//      byte flag = 0;
+//      if(wifis[i].ssid.equals(WiFi.SSID())) flag = 2;
+//      else if(wifis[i].saved) flag = 1;
+//      data += flag;
+//      data += "}";
+//      if(i<wifis.size()-1) data += ",";
     }
-    data += "]";
-    server.send(200, "application/json", data);
+    //data += "]";
+    String t;
+    json.printTo(t);
+    json.printTo(Serial);
+    
+    server.send(200, "application/json", t);
     //
   });
   server.on("/wifi_connect", HTTP_POST, []() {

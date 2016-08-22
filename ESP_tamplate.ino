@@ -22,7 +22,7 @@ SoftwareSerial SoftSerial(5, -1, true,  128); // RX, TX, inverse_logic, buffSize
 #define SOFT_SERIAL_BAUD 115200
 #endif
 
-//#define DBG_OUTPUT_PORT Serial
+#define DBG_OUTPUT_PORT Serial
 //#define DBG_OUTPUT_PORT SoftSerial
 #ifdef DBG_OUTPUT_PORT
   #define DBG_PORT_BAUD 115200
@@ -137,7 +137,8 @@ void WiFi_init(void) {
   read_AP("/wifi_config.txt");
   WiFi_scan();
   WiFi.mode(WIFI_AP_STA);
-  WiFi.softAP(AP_ssid, AP_password);
+  WiFi.softAP(AP_ssid, AP_password, 1, 1); // SSID, PASS, channel, ssid_hidden
+  //WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
   IPAddress AP_IP = WiFi.softAPIP();
   #ifdef DBG_OUTPUT_PORT
     DBG_OUTPUT_PORT.println("WiFi init as AP_STA mode!");

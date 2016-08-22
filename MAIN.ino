@@ -1,5 +1,6 @@
 #include <Ticker.h>
 #include <Wire.h>
+#include <ArduinoJson.h>
 
 Ticker ticker;
 void TCP_UART_init();
@@ -42,14 +43,41 @@ void TCP_UART_handle();
 //  }
 //}
 
+void tick() {
+      
+  StaticJsonBuffer<200> jsonArrayBuffer;
+  JsonArray& json = jsonArrayBuffer.createArray();
+
+  char asd[3][16] = {"Hello", "World", "!!!"};
+  
+  for (int i = 0; i < 3; ++i)
+  {
+    JsonObject &obj = json.createNestedObject();
+    //obj["ssid"] = i == 1 ? "hello" : "api.example.com";
+//    obj["rssi"] = "-80";
+    obj["secure"] = &asd[i][0];
+    obj["flag"] = i;
+  }
+  
+
+    json.printTo(Serial);
+  
+  #ifdef DBG_OUTPUT_PORT
+    DBG_OUTPUT_PORT.print("Work time: ");
+    DBG_OUTPUT_PORT.println(millis() / 1000);
+  #endif
+}
+
 void user_setup() {
     //Wire.begin();
-    //TCP_UART_init();
-    //ticker.attach(5, tick);
+    TCP_UART_init();
+    ticker.attach(60, tick);
+    tick();
 }
 
 void user_loop() {
-  //TCP_UART_handle();
+  
+  TCP_UART_handle();
   
   //WiFi_user_loop();  
     
